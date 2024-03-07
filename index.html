@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drag & Drop API</title>
+
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+   
+  </head>
+  <body>
+    <div class="board">
+      <h1 class="header">The Kanban Board</h1>
+      <form id="todo-form">
+        <input type="text" placeholder="New TODO..." id="todo-input" />
+        <button type="submit">Add Todo</button>
+      </form>
+
+      <div class="lanes">
+        <div class="swim-lane" id="todo-lane" data-status="todo">
+          <h3 class="heading">TODO</h3>
+        </div>
+
+        <div class="swim-lane" data-status="pending">
+          <h3 class="heading">Pending</h3>
+        </div>
+
+        <div class="swim-lane" data-status="done">
+          <h3 class="heading">Done</h3>
+        </div>
+      </div>
+
+    </div>
+    <script src="index.js" defer></script>
+  </body>
+</html>
