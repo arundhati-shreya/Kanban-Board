@@ -1,13 +1,13 @@
 const form = document.getElementById("todo-form");
 const input = document.getElementById("todo-input");
 const todoLane = document.getElementById("todo-lane");
-let taskIdCounter = 0; 
+let taskIdCounter = 0;
 
 window.addEventListener("DOMContentLoaded", () => {
     loadTasksFromFirebase();
 });
 
-form.addEventListener("submit", (e) => {
+form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const value = input.value;
 
@@ -24,7 +24,7 @@ form.addEventListener("submit", (e) => {
 
     todoLane.appendChild(newTask);
 
-    saveTaskToFirebase(value, 'todo');
+    await saveTaskToFirebase(value, 'todo', taskIdCounter - 1); 
 
     input.value = "";
 });
@@ -71,24 +71,25 @@ function loadTasksFromFirebase() {
     .catch(error => console.error('Error loading tasks from Firebase:', error));
 }
 
-function saveTaskToFirebase(taskValue, status) {
-    fetch(`https://expense-tracker-e0688-default-rtdb.firebaseio.com/tasks/${status}.json`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ value: taskValue }), 
-    })
-    .then(response => {
+async function saveTaskToFirebase(taskValue, status, order) {
+    try {
+        const response = await fetch(`https://expense-tracker-e0688-default-rtdb.firebaseio.com/tasks/${status}.json`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ value: taskValue, order: order }), 
+        });
+
         if (!response.ok) {
             throw new Error('Failed to save task to Firebase');
         }
-        return response.json();
-    })
-    .then(data => {
+
+        const data = await response.json();
         console.log("Task saved with ID:", data.name);
-    })
-    .catch(error => console.error('Error saving task to Firebase:', error));
+    } catch(error) {
+        console.error('Error saving task to Firebase:', error);
+    }
 }
 
 const droppables = document.querySelectorAll(".swim-lane");
@@ -101,24 +102,20 @@ function handleDragOver(e) {
     e.preventDefault();
 }
 
-async function updateTasksOrderInFirebase(status, taskId,previousStatus) {
+async function updateTasksOrderInFirebase(status, taskId, previousStatus, newOrder) {
     const task = document.getElementById(taskId);
     const taskValue = task.innerText;
 
-
     try {
-        
-    
         if (previousStatus !== status) {
             await axios.delete(`https://expense-tracker-e0688-default-rtdb.firebaseio.com/tasks/${previousStatus}/${taskId}.json`);
         }
 
-      
-        await axios.put(`https://expense-tracker-e0688-default-rtdb.firebaseio.com/tasks/${status}/${taskId}.json`, { value: taskValue });
+        await axios.put(`https://expense-tracker-e0688-default-rtdb.firebaseio.com/tasks/${status}/${taskId}.json`, { value: taskValue, order: newOrder });
         
-        console.log("Task status updated successfully in Firebase");
+        console.log("Task status and order updated successfully in Firebase");
     } catch(error) {
-        console.error('Error updating task status in Firebase:', error)
+        console.error('Error updating task status and order in Firebase:', error)
     }
 }
 
@@ -132,14 +129,36 @@ function handleDrop(e) {
     }
 
     if (!targetZone) return;
+
     const previousStatus = curTask.parentElement.dataset.status;
     console.log(previousStatus);
-  
-    curTask.parentElement.removeChild(curTask);
 
-    targetZone.appendChild(curTask);
+    const targetTasks = targetZone.querySelectorAll(".task");
+    const dropIndex = Array.from(targetTasks).indexOf(e.target);
 
-    const status = targetZone.dataset.status;
-    const taskId = curTask.id;
-    updateTasksOrderInFirebase(status, taskId,previousStatus);
+    if (curTask.parentElement === targetZone && dropIndex > -1) {
+        const currentIndex = Array.from(targetTasks).indexOf(curTask);
+        if (currentIndex !== dropIndex) {
+ 
+            curTask.parentElement.removeChild(curTask);
+            
+            if (dropIndex < currentIndex) {
+                targetZone.insertBefore(curTask, targetTasks[dropIndex]);
+            } else {
+                targetZone.insertBefore(curTask, targetTasks[dropIndex + 1]);
+            }
+
+            const status = targetZone.dataset.status;
+            const taskId = curTask.id;
+            const newOrder = Array.from(targetZone.querySelectorAll(".task")).indexOf(curTask);
+            updateTasksOrderInFirebase(status, taskId, previousStatus, newOrder);
+        }
+    } else {
+        curTask.parentElement.removeChild(curTask);
+        targetZone.appendChild(curTask);
+        const status = targetZone.dataset.status;
+        const taskId = curTask.id;
+        const newOrder = Array.from(targetZone.querySelectorAll(".task")).indexOf(curTask);
+        updateTasksOrderInFirebase(status, taskId, previousStatus, newOrder);
+    }
 }
